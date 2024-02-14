@@ -1,22 +1,60 @@
-import { useEffect, useState } from "react";
-import { ToastContainer, toast } from "react-toastify"; // Import ToastContainer and toast
-import "react-toastify/dist/ReactToastify.css"; // Import CSS for toast styles
+import React, { useState, useEffect, memo } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { RiLoader4Line } from "react-icons/ri";
 import { Rating } from "@mui/material";
 
-export default function HomePage() {
+const limitDescription = (description, maxLength = 80) => {
+  if (description.length > maxLength) {
+    return description.slice(0, maxLength) + "...";
+  }
+  return description;
+};
+
+// Memoize ProductCard component to optimize rendering -> 
+//preventing unnecessary re-renders when its props have not changed.
+const ProductCard = memo(({ product, addToCart }) => {
+  const handleAddToCart = () => {
+    addToCart(product);
+  };
+
+  return (
+    <div className="bg-white p-2 border rounded-lg flex flex-col justify-center items-center">
+      <img
+        src={product.images[0]}
+        alt="productimage"
+        className="h-[100px] w-[100px] "
+      />
+      <div className="text-center">
+        <p className="font-bold mt-2">{product.title}</p>
+        <Rating value={product.rating} readOnly />
+        <p className="text-sm text-gray-500">
+          {limitDescription(product.description)}
+        </p>
+        <p className="text-xl text-gray-600 font-bold"> ₹{product.price}</p>
+        <button
+          className="w-full cursor-pointer bg-gray-800 text-white h-8 mt-4 text-sm"
+          onClick={handleAddToCart}
+        >
+          Add To Cart
+        </button>
+      </div>
+    </div>
+  );
+});
+
+
+const HomePage = () => {
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-
   const [cart, setCart] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
   useEffect(() => {
-    // Calculate total amount when cart changes
     const calculateTotalAmount = () => {
       let total = 0;
       cart.forEach((item) => {
@@ -28,16 +66,14 @@ export default function HomePage() {
   }, [cart]);
 
   const fetchProducts = () => {
-    setIsLoading(true); // Set loading state to true
+    setIsLoading(true);
     let apiUrl = "https://dummyjson.com/products";
     if (searchQuery) {
       apiUrl += `/search?q=${searchQuery}`;
     }
-    // Add price filter if both min and max prices are provided
     if (minPrice && maxPrice) {
       apiUrl += `&minPrice=${minPrice}&maxPrice=${maxPrice}`;
     }
-    // Add category filter if selected
 
     fetch(apiUrl)
       .then((res) => res.json())
@@ -48,9 +84,10 @@ export default function HomePage() {
         console.error("Error fetching products:", error);
       })
       .finally(() => {
-        setIsLoading(false); // Set loading state to false after fetching products
+        setIsLoading(false);
       });
   };
+
   useEffect(() => {
     fetchProducts();
   }, [minPrice, maxPrice]);
@@ -65,23 +102,15 @@ export default function HomePage() {
     }
   };
 
-  const limitDescription = (description, maxLength = 80) => {
-    if (description.length > maxLength) {
-      return description.slice(0, maxLength) + "...";
-    }
-    return description;
-  };
-
   const addToCart = (product) => {
     setCart([...cart, product]);
     setCartCount(cartCount + 1);
-    // Show toast message
     toast.success(`${product.title} added to cart!`);
   };
 
   return (
     <div className="flex flex-col">
-      <ToastContainer /> {/* Render ToastContainer */}
+      <ToastContainer />
       <div className="flex flex-col md:flex-row mt-6">
         <div className="md:w-1/2 flex justify-center items-center mb-4 md:mb-0">
           <input
@@ -128,7 +157,6 @@ export default function HomePage() {
             <span className="text-gray-500">
               Cart Count: {cartCount}, Total Amount: ₹{totalAmount}
             </span>
-            {/* You can add a link to the cart page here */}
           </div>
         </div>
         {isLoading ? (
@@ -137,38 +165,24 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-            { products.length>0 ?  products.map((product, index) => (
-              <div
-                key={index}
-                className="bg-white p-2 border rounded-lg flex flex-col justify-center items-center"
-              >
-                <img
-                  src={product.images[0]}
-                  alt="productimage"
-                  className="h-[100px] w-[100px] "
+            {products.length > 0 ? (
+              products.map((product, index) => (
+                <ProductCard
+                  key={index}
+                  product={product}
+                  addToCart={addToCart}
                 />
-                <div className="text-center">
-                  <p className="font-bold mt-2">{product.title}</p>
-                  <Rating value={product.rating} readOnly />
-                  <p className="text-sm text-gray-500">
-                    {limitDescription(product.description)}
-                  </p>
-                  <p className="text-xl text-gray-600 font-bold">
-                    {" "}
-                    ₹{product.price}
-                  </p>
-                  <button
-                    className="w-full cursor-pointer bg-gray-800 text-white h-8 mt-4 text-sm"
-                    onClick={() => addToCart(product)}
-                  >
-                    Add To Cart
-                  </button>
-                </div>
-              </div>
-            )):<p className="text-2xl text-center text-gray-500">Product not found</p>}
+              ))
+            ) : (
+              <p className="text-2xl text-center text-gray-500">
+                Product not found
+              </p>
+            )}
           </div>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default HomePage;
